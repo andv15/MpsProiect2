@@ -1,0 +1,7 @@
+
+- punctaj oferit in functie de marimea textului/dificultate ?
+
+!! - text de tip imagine ca sa nu ia cu copy paste
+- efecte asupra textului : rotiri blur contrast miscare Stefan Cel Mare
+
+- generarea text din fisier de cuvinte in engleza
