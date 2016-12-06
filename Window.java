@@ -1,8 +1,5 @@
 
 import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.EventQueue;
-import java.awt.GridBagLayout;
 import java.awt.event.*;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -14,20 +11,21 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
+import java.util.Random;
 import java.util.Scanner;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 import javax.swing.*;
-import javax.swing.Timer;
-import javax.swing.text.JTextComponent;
 
 public class Window extends JFrame implements KeyListener, MouseListener {
 
 	public static final int WRITE_TIME = 10;
 	public static final int NR_VIETI = 10;
+	
+	TextOverlay textOverlay;
+	JFrame textFrame;
+	int indexPhrase = 0;
 
 	JButton play_again = new JButton("Play Again");
 	JTextField name_area_helper = new JTextField("Name : "); // indicator nume
@@ -36,6 +34,8 @@ public class Window extends JFrame implements KeyListener, MouseListener {
 	JTextField r_area = new JTextField("Read Box"); // read box
 	//TODO r_area_image ar trebui sa fie imagine
 	//r_area_image.set_text("...");
+	
+
 	
 	JTextField w_area = new JTextField(); // write box
 
@@ -54,7 +54,8 @@ public class Window extends JFrame implements KeyListener, MouseListener {
 									// jucatorului
 
 	int width, height, scor; // latime, inaltime, scorul jucatorului
-	int vieti, runda_curenta; // numar de vieti si runda curenta
+	int vieti;
+	static int runda_curenta; // numar de vieti si runda curenta
 	int combo; // se adauga la scor si creste cu +1 la fiecare raspuns corect
 	// si scade cu -1 la fiecare raspuns gresit
 	
@@ -68,6 +69,8 @@ public class Window extends JFrame implements KeyListener, MouseListener {
 	 * interiorul acesteia
 	 */
 	public Window(int w, int h) {
+		
+		createText();
 
 		this.setSize(w, h); // setam dimensiunea ferestrei
 		this.setVisible(true); // o facem vizibila
@@ -75,6 +78,7 @@ public class Window extends JFrame implements KeyListener, MouseListener {
 		this.setDefaultCloseOperation(EXIT_ON_CLOSE);
 		this.setFocusable(true);
 		this.setLayout(null); // pentru a putea folosi set bounds la JTextArea
+		this.setLocation(600, 0);
 
 		this.width = w;
 		this.height = h;
@@ -147,7 +151,7 @@ public class Window extends JFrame implements KeyListener, MouseListener {
 		r_area.setBounds(width / 8, 7 * height / 10, 6 * width / 8, 50);
 		r_area.setToolTipText("Read from here !");
 		gen_new_phrase();
-		r_area.setText(gen_phrase);
+		draw_read_area();
 
 		// initializare write field
 		w_area.setEditable(true);
@@ -245,6 +249,8 @@ public class Window extends JFrame implements KeyListener, MouseListener {
 			return;
 		}
 
+		w_area.setBackground(Color.red); // w_area se face rosie
+
 		// cand expira timpul blocheaza campul de write
 		w_area.setText("GAME OVER");
 		w_area.setEnabled(false);
@@ -257,6 +263,11 @@ public class Window extends JFrame implements KeyListener, MouseListener {
 		trim_highscores();
 		save_highscores();
 		draw_highscores();
+		
+		timer.stop(); // opreste cronometrul
+		
+		gen_phrase = "";
+		draw_read_area();
 
 		game_over = 1;
 	}
@@ -279,10 +290,16 @@ public class Window extends JFrame implements KeyListener, MouseListener {
 			if (r_area.getText().equalsIgnoreCase(w_area.getText())) {
 
 				w_area.setBackground(Color.green); // desenaza-l verde
+				w_area.setText("");
 				scor = scor + combo + runda_curenta; // incrementam scorul
 				runda_curenta++;
 				combo++;
 				vieti++;
+				
+				/* alegere animatie pentru runda urmatoare */
+				textOverlay.generateAnimation();
+				textOverlay.makeHarder();
+				textOverlay.reset();
 
 				startTime = -1; // resetam timpul, pentru urmatoarea runda
 
@@ -338,7 +355,7 @@ public class Window extends JFrame implements KeyListener, MouseListener {
 	@Override
 	public void mouseClicked(MouseEvent e) {
 
-		// daca reset e in focus(daca e moseul pe el)
+		// daca reset e apasat
 		if (reset_hscore.isFocusOwner()) {
 			reset_highscores();
 			draw_highscores();
@@ -346,6 +363,8 @@ public class Window extends JFrame implements KeyListener, MouseListener {
 
 		// daca e apasat play again
 		if (play_again.isFocusOwner()) {
+			gen_new_phrase();
+			draw_read_area();
 			init_game();
 		}
 
@@ -379,6 +398,7 @@ public class Window extends JFrame implements KeyListener, MouseListener {
 	 */
 	private void draw_read_area() {
 		r_area.setText(gen_phrase); // TODO sa desenam cu efecte
+		textOverlay.image = textOverlay.updateText(gen_phrase);
 		
 	}
 
@@ -428,11 +448,14 @@ public class Window extends JFrame implements KeyListener, MouseListener {
 		}
 
 		// sari peste ce am scris deja
-		for (int i = 0; i < 2 * scor; i++) {
-			input.next();
+		for (int i = 0; i <= indexPhrase; i++) {
+			input.nextLine();
 		}
+		indexPhrase++;
+		
+		gen_phrase += input.nextLine();
 
-		for (int i = 0; i < 2 * scor + 1; i++) {
+		/*for (int i = 0; i < 2 * scor + 1; i++) {
 			if (input != null) {
 
 				// daca e ultima iteratie nu mai pune spatiul
@@ -444,9 +467,8 @@ public class Window extends JFrame implements KeyListener, MouseListener {
 			} else {
 				System.out.println("Nu am putut citi din fisierul cu miracole");
 			}
-		}
+		}*/
 
-		// inchide fisierul miraculos
 		// inchide fisier
 
 		input.close();
@@ -645,10 +667,20 @@ public class Window extends JFrame implements KeyListener, MouseListener {
 		}
 
 	}
+	
+    public void createText() {
+    	textFrame = new JFrame();
+        textFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        textOverlay = new TextOverlay();
+        textFrame.add(textOverlay);
+        textFrame.pack();
+        textFrame.setVisible(true);
+        textFrame.setSize(600, 700);
+    }
 
 	public static void main(String[] args) {
 
-		new Window(800, 800);
+		new Window(800, 700);
 
 	}
 
